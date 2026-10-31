@@ -1,0 +1,9 @@
+﻿{
+  "name": "MemeBanner",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/Hibiscus14/MemeBanner",
+  "description": "Every Warbanner you drop gets a random image from the mod's folder",
+  "dependencies": [
+    "bbepis-BepInExPack-5.4.2122"
+  ]
+}
