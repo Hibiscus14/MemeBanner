@@ -30,11 +30,13 @@ public class MemeBannerPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "com.hibiscus.memebanner";
     public const string PluginName = "MemeBanner";
-    public const string PluginVersion = "1.0.0";
+    public const string PluginVersion = "1.0.4";
 
     internal const string FLAG_MATERIAL = "matWarbannerFlag";
 
     private const string RISK_OF_OPTIONS_GUID = "com.rune580.riskofoptions";
+
+    private const string ICON_FILE = "icon.png";
 
     private const int ANIMATED_SIZE = 256;
     private const int MAX_FRAMES = 200;
@@ -50,6 +52,7 @@ public class MemeBannerPlugin : BaseUnityPlugin
     private static string _lastShown;
     private static ConfigEntry<bool> _useStockAlpha;
     private static ConfigEntry<bool> _randomBanner;
+    private static ConfigEntry<string> _customFolder;
     internal static ManualLogSource Log;
     private static string _pluginDir;
 
@@ -68,14 +71,20 @@ public class MemeBannerPlugin : BaseUnityPlugin
             "image has been shown once.\n" +
             "On: every banner picks an image at random, which can repeat.");
 
+        _customFolder = Config.Bind("General", "CustomBannersFolder", "",
+            "Empty: images are read from the mod's own folder, which a mod update replaces.\n" +
+            "A full path, e.g. C:\\Memes\\Banners: only that folder is read, so updating the mod " +
+            "never touches your images. Subfolders are included either way.");
+
         _pluginDir = Path.GetDirectoryName(Info.Location);
-        string dir = Path.Combine(_pluginDir, "Banners");
-        Directory.CreateDirectory(dir);
-        _images = Directory.GetFiles(dir, "*", SearchOption.AllDirectories)
+        string folder = ImageFolder();
+        string icon = Path.Combine(_pluginDir, ICON_FILE);
+        _images = Directory.GetFiles(folder, "*", SearchOption.AllDirectories)
             .Where(f => _extensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+            .Where(f => !f.Equals(icon, StringComparison.OrdinalIgnoreCase))
             .ToArray();
         _next = _images.Length;
-        Logger.LogInfo($"{_images.Length} banner image(s) found in {dir}");
+        Logger.LogInfo($"{_images.Length} banner image(s) found in {folder}");
 
         if (Chainloader.PluginInfos.ContainsKey(RISK_OF_OPTIONS_GUID))
         {
@@ -85,6 +94,22 @@ public class MemeBannerPlugin : BaseUnityPlugin
         RoR2Application.onLoadFinished += PatchWardPrefab;
     }
 
+    private string ImageFolder()
+    {
+        string custom = _customFolder.Value.Trim();
+        if (custom.Length == 0)
+        {
+            Directory.CreateDirectory(Path.Combine(_pluginDir, "Banners"));
+            return _pluginDir;
+        }
+        if (Directory.Exists(custom))
+        {
+            return custom;
+        }
+        Logger.LogWarning($"CustomBannersFolder \"{custom}\" does not exist - reading the mod folder instead");
+        return _pluginDir;
+    }
+
     private void SetupRiskOfOptions()
     {
         ModSettingsManager.SetModDescription(
@@ -92,6 +117,7 @@ public class MemeBannerPlugin : BaseUnityPlugin
 
         ModSettingsManager.AddOption(new CheckBoxOption(_useStockAlpha, restartRequired: true));
         ModSettingsManager.AddOption(new CheckBoxOption(_randomBanner));
+        ModSettingsManager.AddOption(new StringInputFieldOption(_customFolder, restartRequired: true));
         Logger.LogInfo("registered in-game settings via Risk of Options");
     }
 
